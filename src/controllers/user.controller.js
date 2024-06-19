@@ -10,13 +10,13 @@ const registerUser = asyncHandler(async (req, res) => {
 
   // validation - not empty
   if (
-    [fullname, email, username, password].some((field) => field?.trim() === "")
+    [fullname, email, username, password].some((field) => field?.trim() === " ")
   ) {
     throw new ApiErrors(400, "All fileds are required");
   }
 
   // check if user already exits: username, email
-  const exitedUser = User.findOne({
+  const exitedUser = await User.findOne({
     $or: [{ username }, { email }],
   });
 
@@ -26,7 +26,12 @@ const registerUser = asyncHandler(async (req, res) => {
 
   // upload them to cloudinary, avatar
   const avatarLocalPath = req.files?.avatar[0]?.path;
-  const coverImageLocalPath = req.files?.coverImage[0]?.path;
+
+  let coverImageLocalPath;
+  if (req.files?.coverImage) {
+    coverImageLocalPath = req.files?.coverImage[0]?.path;
+  }
+
   if (!avatarLocalPath) {
     throw new ApiErrors(400, "Avatar file is required.");
   }
