@@ -2,23 +2,24 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiErrors } from "../utils/ApiErrors.js";
 import { User } from "../models/user.model.js";
 import { uploadClouldinary } from "../utils/cloudinary.js";
-import { ApiResponce } from "../utils/ApiResponce.js";
+import { ApiResponse } from "../utils/ApiResponse.js";
 
 const generateAccessAndRefreshTokens = async (userId) => {
   try {
     const user = await User.findById(userId);
-    const accessToken = User.generateAccessToken();
-    const refreshToken = User.generateRefreshToken();
+    const accessToken = user.generateAccessToken();
+    const refreshToken = user.generateRefreshToken();
 
     // refresh token save on DB
     user.refreshToken = refreshToken;
-    await User.save({ validateBeforeSave: false });
+    await user.save({ validateBeforeSave: false });
 
     return { refreshToken, accessToken };
   } catch (error) {
     throw new ApiErrors(
       500,
-      "Error while generating access and refresh token!"
+      "Error while generating access and refresh token: ",
+      error
     );
   }
 };
@@ -88,7 +89,7 @@ const registerUser = asyncHandler(async (req, res) => {
   // return responce
   return res
     .status(201)
-    .json(new ApiResponce(200, createdUser, "User Registered Successful!"));
+    .json(new ApiResponse(200, createdUser, "User Registered Successful!"));
 });
 
 const loginUser = asyncHandler(async (req, res) => {
@@ -96,9 +97,13 @@ const loginUser = asyncHandler(async (req, res) => {
   const { email, username, password } = req.body;
 
   // username or email
-  if (!username || !email) {
+  if (!username && !email) {
     throw new ApiErrors(400, "User name or password required");
   }
+
+  // if (!(username || email)) {
+  //   throw new ApiErrors(400, "User name or password required");
+  // }
 
   // find the user
   const user = await User.findOne({
@@ -121,7 +126,7 @@ const loginUser = asyncHandler(async (req, res) => {
   );
 
   // getting updated userData
-  const loggedInUser = User.findById(user._id).select(
+  const loggedInUser = await User.findById(user._id).select(
     "-password -refreshToken"
   );
 
@@ -132,14 +137,18 @@ const loginUser = asyncHandler(async (req, res) => {
   };
 
   return res
-    .send(200)
+    .status(200)
     .cookie("accessToken", accessToken, option)
     .cookie("refreshToken", refreshToken, option)
     .json(
-      new ApiResponce(
+      new ApiResponse(
         200,
-        { user: loggedInUser, refreshToken, accessToken },
-        "User successfully login"
+        {
+          user: loggedInUser,
+          accessToken,
+          refreshToken,
+        },
+        "User logged In Successfully"
       )
     );
 });
@@ -160,7 +169,7 @@ const logoutUser = asyncHandler(async (req, res) => {
     .status(200)
     .clearCookie("accessToken", option)
     .clearCookie("refreshToken", option)
-    .json(new ApiResponce(200, {}, "Successfully logout"));
+    .json(new ApiResponse(200, {}, "Successfully logout"));
 });
 
 export { registerUser, loginUser, logoutUser };

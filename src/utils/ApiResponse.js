@@ -1,6 +1,6 @@
 // Fixed it
 
-class ApiResponce {
+class ApiResponse {
   constructor(statusCode, data, message = "success") {
     (this.statusCode = statusCode),
       (this.data = data),
@@ -8,4 +8,4 @@ class ApiResponce {
   }
 }
 
-export { ApiResponce };
+export { ApiResponse };
