@@ -1,7 +1,7 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiErrors } from "../utils/ApiErrors.js";
 import { User } from "../models/user.model.js";
-import { uploadClouldinary } from "../utils/cloudinary.js";
+import { uploadOnClouldinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
 
@@ -63,8 +63,8 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new ApiErrors(400, "Avatar file is required.");
   }
 
-  const avatar = await uploadClouldinary(avatarLocalPath);
-  const coverImage = await uploadClouldinary(coverImageLocalPath);
+  const avatar = await uploadOnClouldinary(avatarLocalPath);
+  const coverImage = await uploadOnClouldinary(coverImageLocalPath);
 
   if (!avatar) {
     throw new ApiErrors(400, "Avatar file is required.");
@@ -246,7 +246,60 @@ const getCurrentUser = asyncHandler(
   })
 );
 
-const updateAccountDetails = asyncHandler(async (req, res) => {});
+const updateAccountDetails = asyncHandler(async (req, res) => {
+  const { fullname, email } = req.body;
+
+  if (!(fullname || email)) {
+    throw new ApiErrors(400, "Fullname & Email are required");
+  }
+
+  const updatedUser = await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $set: {
+        fullname,
+        email,
+      },
+    },
+    { new: true }
+  ).select("-password");
+
+  return res
+    .status(200)
+    .ApiResponse(200, updatedUser, "Account details Update successfully.");
+});
+
+const updateUserAvatar = asyncHandler(async (req, res) => {
+  const avatarLocalPath = req.file?.path;
+
+  if (!avatarLocalPath) {
+    throw new ApiErrors(400, "Avatar file missing");
+  }
+
+  //TODO: delete old image - assignment
+
+  const avatar = await uploadOnClouldinary(avatarLocalPath);
+
+  if (!avatar.url) {
+    throw new ApiErrors(400, "Error while updating avatar");
+  }
+
+  const updatedUser = await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $set: {
+        avatar: avatar.url,
+      },
+    },
+    { new: true }
+  ).select("-password");
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, updatedUser, "Avatar image update successfully.")
+    );
+});
 
 export {
   registerUser,
@@ -256,4 +309,5 @@ export {
   changeCurrentPassword,
   getCurrentUser,
   updateAccountDetails,
+  updateUserAvatar,
 };
